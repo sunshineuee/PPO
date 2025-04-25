@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 import time
@@ -19,6 +18,59 @@ from ppo_agent.enums import SUPPORTED_TIMEFRAMES
 from ppo_agent.features import extract_features
 
 from ppo_agent.utils import TrainingJournal
+import json
+import pandas as pd
+from typing import Dict, Any
+
+class DataLoader:
+    def __init__(self, registry_path: str = "ASSET_REGISTRY.json"):
+        self.registry_path = registry_path
+        self.registry = self._load_registry()
+
+    def _load_registry(self) -> Dict[str, Any]:
+        try:
+            with open(self.registry_path, 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {"assets": {}}
+
+    def _save_registry(self) -> None:
+        with open(self.registry_path, 'w') as f:
+            json.dump(self.registry, f, indent=4)
+
+    def _register_new_figi(self, figi: str, broker: str = "TINKOFF") -> None:
+        """Регистрация нового FIGI в реестре"""
+        if figi not in self.registry["assets"]:
+            self.registry["assets"][figi] = {
+                "broker": broker,
+                "first_seen": pd.Timestamp.now().isoformat()
+            }
+            self._save_registry()
+            print(f"Зарегистрирован новый FIGI: {figi}")
+
+    def process_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Обработка входного датафрейма:
+        1. Проверка и регистрация новых FIGI
+        2. Подготовка технических индикаторов
+        """
+        # Предполагаем, что в датафрейме есть колонка 'figi'
+        unique_figis = df['figi'].unique()
+        
+        # Регистрируем новые FIGI
+        for figi in unique_figis:
+            self._register_new_figi(figi)
+            
+        # Здесь добавляем технические индикаторы
+        processed_df = self._add_technical_features(df)
+        
+        return processed_df
+
+    def _add_technical_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Добавление технических индикаторов"""
+        # Здесь логика добавления технических индикаторов
+        # ...
+        return df
 
 class PPOAgent:
     def __init__(self, model_dir: str = "ppo_agent/models", journal_dir: str = "training_journal"):

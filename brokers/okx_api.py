@@ -5,7 +5,7 @@ import logging
 BASE_URL = 'https://www.okx.com'
 
 
-class OKXClient:
+class OKXAPI:
     def __init__(self):
         self.session = requests.Session()
 

@@ -1,23 +1,34 @@
 import time
 from datetime import datetime
-from ppo_agent.tinkoff_api import TinkoffAPI
+from pathlib import Path
+
 from ppo_agent.agent import PPOAgent
 from ppo_agent.indicators import compute_all_indicators
 from ppo_agent.features import extract_features
 from ppo_agent.enums import SUPPORTED_TIMEFRAMES, INTERVAL_TO_TIMESPAN
 from ppo_agent.utils import TrainingJournal
-from pathlib import Path
+from ppo_agent.asset_registry import get_broker_and_figi
+from brokers.broker import get_broker
 
 
 class PPOTrainingLoop:
-    def __init__(self, agent: PPOAgent, api: TinkoffAPI):
+    def __init__(self, agent: PPOAgent):
         self.agent = agent
-        self.api = api
         self.journal_root = Path("ppo_agent/training_journal")
 
     def run(self):
-        for figi, asset_name in self.agent.assets.items():
-            print(f"🔄 Обработка актива: {asset_name} ({figi})")
+        for asset_name in self.agent.assets:
+            broker_name, figi = get_broker_and_figi(asset_name)
+            if not broker_name or not figi:
+                print(f"⚠️ Актив {asset_name} не найден в asset_registry")
+                continue
+
+            broker = get_broker(broker_name)
+            if not broker:
+                print(f"⚠️ Брокер {broker_name} не зарегистрирован")
+                continue
+
+            print(f"🔄 Обработка актива: {asset_name} ({figi}) от {broker_name}")
 
             for timeframe, interval in SUPPORTED_TIMEFRAMES.items():
                 try:
@@ -35,7 +46,7 @@ class PPOTrainingLoop:
                         print(f"⏭️ Уже обучено на {asset_name} ({figi}) — {timeframe}")
                         continue
 
-                    candles_df = self.api.get_market_data_history(
+                    candles_df = broker.get_market_data_history(
                         figi=figi,
                         from_=from_time,
                         to_=to_time,

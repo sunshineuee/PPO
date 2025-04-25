@@ -1,14 +1,13 @@
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Literal
-from tinkoff.invest import CandleInterval
 
 from ppo_agent.indicators import compute_all_indicators
-from ppo_agent.tinkoff_api import TinkoffAPI
+from brokers.broker import get_broker
 from ppo_agent.enums import SUPPORTED_TIMEFRAMES, INTERVAL_TO_TIMESPAN
 
 
-tinkoff = TinkoffAPI()
+broker = get_broker("tinkoff")
 
 def load_recent_candles(asset: str, timeframe: Literal["1m", "5m", "15m", "1h", "1d"], steps: int = 100) -> pd.DataFrame:
     """
@@ -19,7 +18,7 @@ def load_recent_candles(asset: str, timeframe: Literal["1m", "5m", "15m", "1h", 
     to_time = datetime.utcnow()
     from_time = to_time - steps * interval_duration
 
-    df = tinkoff.get_market_data_history(
+    df = broker.get_market_data_history(
         figi=asset,
         from_=from_time,
         to_=to_time,
